@@ -8,11 +8,13 @@ import {
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  getRedirectResult,
   GoogleAuthProvider,
   sendEmailVerification,
   signInAnonymously,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   updateProfile,
   type User,
@@ -58,12 +60,36 @@ export async function getAppCheckHeader(): Promise<Record<string, string>> {
 export const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(firebaseApp);
 
+// Automatically finalize any pending mobile/Safari Google redirect sign-in on load
+if (typeof window !== 'undefined') {
+  getRedirectResult(auth).catch((err) => {
+    console.warn('Google redirect sign-in check:', err);
+  });
+}
+
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export async function signInWithGoogle(): Promise<User> {
-  const credential = await signInWithPopup(auth, googleProvider);
-  return credential.user;
+  try {
+    const credential = await signInWithPopup(auth, googleProvider);
+    return credential.user;
+  } catch (error) {
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code: string }).code)
+        : '';
+
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      await signInWithRedirect(auth, googleProvider);
+      // Page navigates away for OAuth redirect; return a never-settling promise to avoid flashing an error
+      return new Promise<User>(() => {});
+    }
+    throw error;
+  }
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
@@ -117,6 +143,8 @@ export function mapFirebaseAuthError(error: unknown): string {
       return 'Too many attempts. Please wait a moment before trying again.';
     case 'auth/popup-closed-by-user':
       return 'Google sign-in popup was closed before completion.';
+    case 'auth/popup-blocked':
+      return 'Popup was blocked by your browser. Redirecting to Google Sign-In...';
     case 'auth/operation-not-allowed':
       return 'This sign-in provider is not yet enabled in the Firebase Console (Authentication > Sign-in method).';
     default:

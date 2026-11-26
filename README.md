@@ -25,7 +25,6 @@ ClauseGuard helps freelancers, tenants, founders, and SME legal/procurement team
 
 ## Live Demo & Video Walkthrough
 
-<<<<<<< HEAD
 - **Demo Video (2-Minute Walkthrough):** [https://youtu.be/ME4XC5E5vb8](https://youtu.be/ME4XC5E5vb8)
 - **Live Web Application:** [https://clauseguard-l5dq.onrender.com](https://clauseguard-l5dq.onrender.com)
 - **Authentication:** Sign in with **Google**, **Email & Password**, or click **Continue as Guest Reviewer (Anonymous Session)** for instant one-click access.
@@ -35,7 +34,6 @@ ClauseGuard helps freelancers, tenants, founders, and SME legal/procurement team
 - **2-Minute Video Demo (`#BuildHybridAI 2026`):** [https://youtu.be/ME4XC5E5vb8](https://youtu.be/ME4XC5E5vb8)
 - **Authentication:** Sign in with **Google**, **Email & Password**, or click **Continue as Guest Reviewer (Anonymous Session)** for instant one-click access.
 - **30-Second Verification Flow:**
->>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b
   1. Click **Load Sample Tenancy** (or upload a contract PDF/TXT) and select a governing jurisdiction (`Malaysia`, `Singapore`, `United Kingdom`, `United States`, or `General`).
   2. Toggle between **Raw Input** and **Redacted Preview (Safe Payload)** to verify local masking of MyKad ICs, bank accounts, phone numbers, emails, and addresses before any network call.
   3. Click **Run Hybrid Audit** to inspect `ON_DEVICE` vs. `IN_CLOUD` inference provenance pills, per-clause latency, and `$0.00` local compute savings.
@@ -116,7 +114,6 @@ ClauseGuard implements a **Split-Compute Hybrid AI** pipeline governed by a **Ze
 |   * POST /api/v1/counter-clause           -> Balanced counter-clause drafting     |
 |   * POST /api/v1/analyze-contract-image   -> Photo OCR + PII redaction            |
 +-----------------------------------------------------------------------------------+
-<<<<<<< HEAD
 ```
 
 ### Technology Stack
@@ -321,4 +318,3 @@ uvicorn app.main:app --reload --port 8000
 4. **Cross-Clause Consistency & Multi-Language Support:** Detect contradictions across separate sections (e.g., Term vs. Termination Notice) and add native bilingual **Bahasa Melayu / English** clause normalization for Malaysian tenancy and statutory contracts.
 5. **Client-Side NER Enhancement:** Supplement deterministic regex PII masking with a lightweight local WebAssembly/ONNX Named-Entity Recognition (NER) pass to mask free-form personal names and bespoke entity references before cloud escalation.
 =======
->>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b

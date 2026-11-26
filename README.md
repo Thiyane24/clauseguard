@@ -317,4 +317,3 @@ uvicorn app.main:app --reload --port 8000
 3. **Custom Corporate Playbooks & Risk Rubrics:** Allow procurement and legal teams to define organization-specific red-flag policies (e.g., maximum liability caps, governing law requirements, notice periods) applied during on-device and cloud audits.
 4. **Cross-Clause Consistency & Multi-Language Support:** Detect contradictions across separate sections (e.g., Term vs. Termination Notice) and add native bilingual **Bahasa Melayu / English** clause normalization for Malaysian tenancy and statutory contracts.
 5. **Client-Side NER Enhancement:** Supplement deterministic regex PII masking with a lightweight local WebAssembly/ONNX Named-Entity Recognition (NER) pass to mask free-form personal names and bespoke entity references before cloud escalation.
-=======

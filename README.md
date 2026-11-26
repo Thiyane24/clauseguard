@@ -82,7 +82,7 @@ ClauseGuard applies a **Split-Compute Hybrid AI** architecture backed by a **Zer
                      (Redacted text / base64 image only)
                                      v
 +-----------------------------------------------------------------------------------+
-|               Backend API (Node/Express server.ts  OR  Python FastAPI)            |
+|               Backend API (Python FastAPI)            |
 |                                                                                   |
 |  - Firebase ID Token RSA verification + email_verified / anonymous checks         |
 |  - Strict host-matched CORS + security headers                                    |

@@ -92,10 +92,17 @@ const NANO_JSON_SCHEMA: Record<string, unknown> = {
 };
 
 // Clauses up to this length run locally on Gemini Nano ($0.00); denser clauses offload to Cloud Flash
-const ON_DEVICE_MAX_CHARS = 280;
+const ON_DEVICE_MAX_CHARS = 220;
+const ON_DEVICE_TIMEOUT_MS = 12_000;
+const MAX_ON_DEVICE_CLAUSES_PER_AUDIT = 3;
 
 let baseNanoSession: ChromeLanguageModelSession | null = null;
 let nanoQueue: Promise<unknown> = Promise.resolve();
+let localClausesDispatched = 0;
+
+export function resetLocalAuditBudget(): void {
+  localClausesDispatched = 0;
+}
 
 function getChromeLanguageModel(): ChromeLanguageModelApi | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -117,6 +124,22 @@ function runOnDeviceSerialized<T>(task: () => Promise<T>): Promise<T> {
   const next = nanoQueue.then(task, task);
   nanoQueue = next.catch(() => {});
   return next;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('On-device inference timeout')), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }
 
 export async function checkNanoAvailability(): Promise<NanoAvailability> {
@@ -231,29 +254,39 @@ async function auditClauseOnDevice(params: {
 }): Promise<Omit<ClauseAuditResponse, 'latencyMs'>> {
   const compactPrompt = [
     `Audit this ${params.jurisdiction} contract clause. Reply with compact JSON only:`,
-    `{"clauseTitle":"2-4 word title","riskLevel":"LOW|MEDIUM|HIGH","plainEnglishSummary":"1 short sentence under 18 words","redFlags":["up to 2 short risk phrases, or empty if LOW"]}`,
+    `{"clauseTitle":"2-4 word title","riskLevel":"LOW|MEDIUM|HIGH","plainEnglishSummary":"1 concise sentence explaining the risk or obligation","redFlags":["up to 2 short risk phrases, or empty if LOW"]}`,
     `Clause:\n${params.safeClauseText}`,
   ].join('\n');
 
-  const rawJson = await runOnDeviceSerialized(async () => {
-    const base = await getNanoSession();
-    const session = base.clone ? await base.clone() : base;
-    try {
+  const rawJson = await withTimeout(
+    runOnDeviceSerialized(async () => {
+      const base = await getNanoSession();
+      const session = base.clone ? await base.clone() : base;
       try {
-        return await session.prompt(compactPrompt, {
-          responseConstraint: NANO_JSON_SCHEMA,
-        });
-      } catch {
-        return await session.prompt(compactPrompt);
+        try {
+          return await session.prompt(compactPrompt, {
+            responseConstraint: NANO_JSON_SCHEMA,
+          });
+        } catch {
+          return await session.prompt(compactPrompt);
+        }
+      } finally {
+        if (session !== base) {
+          session.destroy();
+        }
       }
-    } finally {
-      if (session !== base) {
-        session.destroy();
-      }
-    }
-  });
+    }),
+    ON_DEVICE_TIMEOUT_MS,
+  );
 
   const parsed = parseJsonResponse(rawJson);
+  if (
+    typeof parsed.plainEnglishSummary !== 'string' ||
+    parsed.plainEnglishSummary.trim().length < 12
+  ) {
+    throw new Error('On-device model returned incomplete summary; escalating to cloud');
+  }
+
   const normalized = normalizeAuditJson(parsed, params.fallbackTitle);
   return {
     ...normalized,
@@ -270,10 +303,15 @@ export async function auditClauseHybrid(params: {
   const start = performance.now();
   const safeClauseText = redactPII(params.redactedText).redactedText;
 
-  // Complexity-aware routing: run routine/short clauses locally on Gemini Nano ($0.00)
-  // and offload long, multi-condition clauses in parallel to Cloud Gemini Flash.
+  // Complexity-aware routing: run up to 3 routine/short clauses locally on Gemini Nano ($0.00)
+  // and offload long or excess clauses in parallel to Cloud Gemini Flash with a 12s timeout guard.
   const nanoStatus = await checkNanoAvailability();
-  if (nanoStatus === 'available' && safeClauseText.length <= ON_DEVICE_MAX_CHARS) {
+  if (
+    nanoStatus === 'available' &&
+    safeClauseText.length <= ON_DEVICE_MAX_CHARS &&
+    localClausesDispatched < MAX_ON_DEVICE_CLAUSES_PER_AUDIT
+  ) {
+    localClausesDispatched += 1;
     try {
       const localResult = await auditClauseOnDevice({
         fallbackTitle: params.fallbackTitle,
@@ -285,7 +323,7 @@ export async function auditClauseHybrid(params: {
         latencyMs: Math.round(performance.now() - start),
       };
     } catch {
-      // Fall through to cloud model if local inference fails
+      // Fall through to cloud model if local inference times out or returns incomplete JSON
     }
   }
 

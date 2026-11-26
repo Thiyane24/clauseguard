@@ -3,7 +3,11 @@
 **Zero-Leakage Hybrid AI Contract Intelligence** built for `#BuildHybridAI 2026`.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-clauseguard--l5dq.onrender.com-0F172A?style=for-the-badge)](https://clauseguard-l5dq.onrender.com)
+<<<<<<< HEAD
+[![Watch Demo](https://img.shields.io/badge/Watch_Demo-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ME4XC5E5vb8)
+=======
 [![YouTube Demo](https://img.shields.io/badge/YouTube_Demo-Watch_2--Min_Walkthrough-DC2626?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ME4XC5E5vb8)
+>>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b
 [![Built With](https://img.shields.io/badge/Built_With-Gemini_Nano_%2B_Firebase_AI_Logic-10B981?style=for-the-badge)](#system-architecture)
 
 ClauseGuard helps freelancers, tenants, founders, and SME legal/procurement teams audit high-stakes contracts (tenancy agreements, software NDAs, employment letters, and vendor SOWs) without exposing personally identifiable information (PII) to external cloud servers. Sensitive identifiers are deterministically masked **in the browser before any AI inference**, routine clauses run **on-device via Chrome Built-in AI (Gemini Nano / `PREFER_ON_DEVICE`)** at `$0.00` marginal cost, and **Cloud Gemini Flash** handles complex multi-condition clauses, counter-clause redlines, and physical contract photo OCR on redacted text only.
@@ -29,10 +33,17 @@ ClauseGuard helps freelancers, tenants, founders, and SME legal/procurement team
 
 ## Live Demo & Video Walkthrough
 
+<<<<<<< HEAD
+- **Demo Video (2-Minute Walkthrough):** [https://youtu.be/ME4XC5E5vb8](https://youtu.be/ME4XC5E5vb8)
+- **Live Web Application:** [https://clauseguard-l5dq.onrender.com](https://clauseguard-l5dq.onrender.com)
+- **Authentication:** Sign in with **Google**, **Email & Password**, or click **Continue as Guest Reviewer (Anonymous Session)** for instant one-click access.
+- **30-Second Judge Verification Flow:**
+=======
 - **Production Web App:** [https://clauseguard-l5dq.onrender.com](https://clauseguard-l5dq.onrender.com)
 - **2-Minute Video Demo (`#BuildHybridAI 2026`):** [https://youtu.be/ME4XC5E5vb8](https://youtu.be/ME4XC5E5vb8)
 - **Authentication:** Sign in with **Google**, **Email & Password**, or click **Continue as Guest Reviewer (Anonymous Session)** for instant one-click access.
 - **30-Second Verification Flow:**
+>>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b
   1. Click **Load Sample Tenancy** (or upload a contract PDF/TXT) and select a governing jurisdiction (`Malaysia`, `Singapore`, `United Kingdom`, `United States`, or `General`).
   2. Toggle between **Raw Input** and **Redacted Preview (Safe Payload)** to verify local masking of MyKad ICs, bank accounts, phone numbers, emails, and addresses before any network call.
   3. Click **Run Hybrid Audit** to inspect `ON_DEVICE` vs. `IN_CLOUD` inference provenance pills, per-clause latency, and `$0.00` local compute savings.
@@ -113,3 +124,209 @@ ClauseGuard implements a **Split-Compute Hybrid AI** pipeline governed by a **Ze
 |   * POST /api/v1/counter-clause           -> Balanced counter-clause drafting     |
 |   * POST /api/v1/analyze-contract-image   -> Photo OCR + PII redaction            |
 +-----------------------------------------------------------------------------------+
+<<<<<<< HEAD
+```
+
+### Technology Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend UI** | React 19, TypeScript, Vite 8, Tailwind CSS v4, Lucide Icons, Motion |
+| **On-Device & Hybrid AI** | Chrome Built-in AI (`window.LanguageModel` / Gemini Nano), Firebase AI Logic (`firebase/ai`, `InferenceMode.PREFER_ON_DEVICE`) |
+| **Client Document Parsing** | `pdfjs-dist` (local browser-only PDF text extraction without server upload) |
+| **Primary Full-Stack Server** | Node.js + Express (`server.ts`) + `@google/genai` (`gemini-3.5-flash` / `gemini-2.5-flash-lite` rolling fallback) |
+| **Parallel Python Microservice** | Python 3.12, FastAPI, Pydantic v2, `firebase-admin`, `google-genai`, `pytest` (`backend/`) |
+| **Auth, Security & Persistence** | Firebase Authentication (Google, Email/Password, Anonymous), Firebase App Check, Cloud Firestore |
+
+---
+
+## Repository Structure
+
+```text
+.
+├── server.ts                         # Express + Vite production/dev server & Gemini API proxy
+├── render.yaml                       # Render single-service deployment blueprint
+├── index.html                        # App HTML entry point & OpenGraph metadata
+├── package.json                      # Scripts (dev, start, build, lint) & Node dependencies
+├── metadata.json                     # App metadata & server-side Gemini capability declaration
+├── firebase-applet-config.json       # Firebase web app & Firestore database configuration
+├── firebase-blueprint.json           # Canonical Firestore entity schemas & collection layout
+├── firestore.rules                   # Owner-scoped Firestore security rules
+├── eslint.config.js                  # Security-rules ESLint configuration
+├── security_spec.md                  # Threat model, invariants, and security verification spec
+├── .env.example                      # Root server environment template (no secrets)
+├── src/
+│   ├── App.tsx                       # Main ClauseGuard workspace & audit orchestration
+│   ├── index.css                     # Executive Legal-Tech Tailwind v4 theme & typography
+│   ├── components/
+│   │   ├── AuthGate.tsx              # Split-screen Sign In / Sign Up / Guest Reviewer gate
+│   │   ├── TopBar.tsx                # Workspace navigation, user account menu, email verification
+│   │   ├── TelemetryHeader.tsx       # Nano availability/download, network status, split & cost meter
+│   │   ├── ContractInputPanel.tsx    # Document workbench, PDF upload, raw vs. redacted preview
+│   │   ├── ClauseCard.tsx            # Risk badge, provenance pill, red flags, counter-clause diff
+│   │   ├── PhotoScannerModal.tsx     # Physical contract image upload & OCR transcription modal
+│   │   ├── ExportModal.tsx           # Markdown report & SVG/printable exhibit exporter
+│   │   ├── SavedAuditsPanel.tsx      # Firestore saved audit history viewer & loader
+│   │   └── ErrorBoundary.tsx         # React fault-isolation boundary
+│   └── lib/
+│       ├── firebase.ts               # Firebase Auth (popup + redirect fallback), App Check & Firestore
+│       ├── firestoreAudits.ts        # Firestore CRUD + local sessionStorage fallback
+│       ├── hybridAi.ts               # Nano availability, timeout-guarded local routing & cloud fallback
+│       ├── piiRedactor.ts            # Deterministic client-side PII masking & breakdown counter
+│       ├── clauseSplitter.ts         # Numbered section parser for legal agreements
+│       ├── pdfExtractor.ts           # Local browser-only PDF text extractor via pdfjs-dist
+│       ├── sampleContract.ts         # Built-in Malaysian tenancy agreement test fixture
+│       └── types.ts                  # Shared TypeScript domain interfaces
+└── backend/                          # Standalone Python 3.12 FastAPI backend service
+    ├── Dockerfile                    # Container image definition for FastAPI service
+    ├── requirements.txt              # FastAPI, Pydantic, firebase-admin, google-genai, pytest
+    ├── .env.example                  # FastAPI environment template
+    ├── app/
+    │   ├── config.py                 # Pydantic Settings configuration
+    │   ├── main.py                   # FastAPI app (/health, /api/v1/counter-clause)
+    │   ├── redactor.py               # Server-side deterministic PII scrubber
+    │   ├── security.py               # Firebase Auth & App Check verification dependency
+    │   ├── gemini_cloud.py           # Structured JSON counter-clause generator via google-genai
+    │   └── schemas.py                # Pydantic v2 request/response models
+    └── tests/
+        ├── test_redactor.py          # Deterministic PII masking unit tests
+        └── test_api.py               # FastAPI security & endpoint integration tests
+```
+
+---
+
+## Data Model & Security
+
+### Firestore Collections (`firebase-blueprint.json`)
+
+- **`/users/{userId}` (`UserProfile`)**: Owner-only profile storing `uid`, `displayName`, optional `email`, `createdAt`, and `updatedAt`.
+- **`/audits/{auditId}` (`ContractAudit`)**: Audit session metadata (`userId`, `title`, `jurisdiction`, clause risk counts, `piiItemsRemoved`, `onDeviceCount`, `inCloudCount`, timestamps).
+- **`/audits/{auditId}/clauses/{clauseId}` (`AuditedClause`)**: Strictly **redacted** clause text (`redactedText`), `riskLevel`, `plainEnglishSummary`, `redFlags`, `inferenceSource`, `legalConcern`, and `suggestedCounterClause`.
+
+### Security & Privacy Controls
+
+- **Unredacted Text Never Leaves the Browser:** `auditClauseHybrid()` and `requestCounterClause()` both re-run `redactPII()` immediately before serialization, and `server.ts` / `backend/app/main.py` scrub inputs and outputs a second time.
+- **Verified Authentication & Access Control:**
+  - `server.ts` verifies Firebase ID tokens (`aud`, `iss`, `sub`, `exp`, `iat`) and supports Firebase App Check headers (`X-Firebase-AppCheck`).
+  - `firestore.rules` restricts document reads and writes to authenticated users (`request.auth != null`) and owner-scoped user profiles.
+- **Zero Hardcoded Secrets:** `GEMINI_API_KEY` is never committed to source control; it is injected strictly at runtime via environment variables.
+
+---
+
+## API Reference
+
+All `POST` endpoints accept `Authorization: Bearer <firebase-id-token>` and `X-Firebase-AppCheck` headers.
+
+| Method & Path | Purpose | Server |
+| :--- | :--- | :--- |
+| `GET /health` | Service health and runtime mode check | `server.ts` & `backend/app/main.py` |
+| `POST /api/v1/audit-clause` | Cloud fallback for structured clause risk audit when on-device inference is unavailable | `server.ts` |
+| `POST /api/v1/counter-clause` | Generates a balanced, jurisdiction-aware redline counter-clause from redacted text | `server.ts` & `backend/app/main.py` |
+| `POST /api/v1/analyze-contract-image` | Extracts and immediately masks clauses from photographed contract pages (PNG/JPEG/WebP, <5.5MB) | `server.ts` |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js 20+** (or Bun) and **npm**
+- **Google Chrome** with Built-in AI flags enabled (`#prompt-api-for-gemini-nano`) for local `ON_DEVICE` Gemini Nano inference (otherwise the app automatically uses Cloud Gemini Flash fallback)
+- **Gemini API Key** configured in `.env` (`GEMINI_API_KEY`)
+- **Python 3.12+** (optional, if running the standalone `backend/` FastAPI service)
+
+### 1. Configure Environment Variables
+
+Copy `.env.example` to `.env` and fill in your `GEMINI_API_KEY`:
+
+```env
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+PORT=3000
+NODE_ENV="development"
+ENV="development"
+GEMINI_CLOUD_MODEL="gemini-3.5-flash"
+FIREBASE_PROJECT_ID="project2-8e03b"
+FIRESTORE_DATABASE_ID="(default)"
+CORS_ORIGINS="http://localhost:3000,http://localhost:5173"
+```
+
+### 2. Install & Run Full-Stack App (Port 3000)
+
+```bash
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Open `http://localhost:3000` in your browser.
+
+### 3. Production Build & Start
+
+```bash
+npm run build
+npm run start
+```
+
+### 4. Standalone Python FastAPI Backend (Optional)
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+---
+
+## Testing & Verification
+
+- **TypeScript Type Check:**
+  ```bash
+  npm run lint
+  ```
+- **Production Bundle Build:**
+  ```bash
+  npm run build
+  ```
+- **Firestore Security Rules Lint:**
+  ```bash
+  npx eslint firestore.rules
+  ```
+- **Python Backend Unit & API Tests:**
+  ```bash
+  cd backend
+  pytest
+  ```
+
+---
+
+## Deployment Guide (Render & Firebase)
+
+### 1. Render Web Service (`render.yaml`)
+
+- **Build Command:** `npm install --legacy-peer-deps && npm run build`
+- **Start Command:** `npm run start`
+- **Required Environment Variables:**
+  - `GEMINI_API_KEY`
+  - `GEMINI_CLOUD_MODEL` = `gemini-3.5-flash`
+  - `FIREBASE_PROJECT_ID` = `project2-8e03b`
+  - `FIRESTORE_DATABASE_ID` = `(default)`
+  - `NODE_ENV` = `production`
+
+### 2. Firebase Console Configuration (`project2-8e03b`)
+
+1. Open **Authentication → Sign-in method** and ensure **Google**, **Email/Password**, and **Anonymous** providers are enabled.
+2. Add your Render domain (`clauseguard-l5dq.onrender.com`) under **Authentication → Settings → Authorized domains**.
+3. Publish `firestore.rules` under **Firestore Database → Rules** on the `(default)` database.
+
+---
+
+## Future Enhancements
+
+1. **DOCX Tracked-Changes Redline Export:** Export accepted counter-clauses directly into `.docx` files with Word-compatible `<w:ins>` / `<w:del>` tracked revisions so legal counterparties can review changes natively.
+2. **Offline Encrypted Queue & Sync:** Persist in-progress offline Gemini Nano audits in encrypted browser storage (`IndexedDB` + WebCrypto) and automatically sync redacted summaries to Firestore once connectivity returns.
+3. **Custom Corporate Playbooks & Risk Rubrics:** Allow procurement and legal teams to define organization-specific red-flag policies (e.g., maximum liability caps, governing law requirements, notice periods) applied during on-device and cloud audits.
+4. **Cross-Clause Consistency & Multi-Language Support:** Detect contradictions across separate sections (e.g., Term vs. Termination Notice) and add native bilingual **Bahasa Melayu / English** clause normalization for Malaysian tenancy and statutory contracts.
+5. **Client-Side NER Enhancement:** Supplement deterministic regex PII masking with a lightweight local WebAssembly/ONNX Named-Entity Recognition (NER) pass to mask free-form personal names and bespoke entity references before cloud escalation.
+=======
+>>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b

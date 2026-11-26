@@ -1,0 +1,6 @@
+{
+  "name": "ClauseGuard",
+  "description": "Privacy-First Hybrid AI Legal Contract Auditor combining on-device Gemini Nano inference, local PII redaction, and cloud-assisted counter-clause drafting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

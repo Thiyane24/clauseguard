@@ -1,0 +1,187 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true ||
+        request.auth.token.firebase.sign_in_provider == 'anonymous'
+      );
+    }
+
+    function isOwner(userId) {
+      return isVerifiedUser() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'email', 'createdAt', 'updatedAt']) &&
+        data.uid is string && data.uid == request.auth.uid && data.uid == userId &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 254)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidJurisdiction(j) {
+      return j in ['Malaysia', 'Singapore', 'United Kingdom', 'United States', 'General'];
+    }
+
+    function isValidContractAudit(data, auditId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'title', 'jurisdiction',
+          'totalClauses', 'highRiskCount', 'mediumRiskCount', 'lowRiskCount',
+          'piiItemsRemoved', 'onDeviceCount', 'inCloudCount',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'title', 'jurisdiction',
+          'totalClauses', 'highRiskCount', 'mediumRiskCount', 'lowRiskCount',
+          'piiItemsRemoved', 'onDeviceCount', 'inCloudCount',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) && data.id == auditId &&
+        isValidId(data.userId) && data.userId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.jurisdiction is string && isValidJurisdiction(data.jurisdiction) &&
+        data.totalClauses is int && data.totalClauses >= 0 && data.totalClauses <= 500 &&
+        data.highRiskCount is int && data.highRiskCount >= 0 && data.highRiskCount <= 500 &&
+        data.mediumRiskCount is int && data.mediumRiskCount >= 0 && data.mediumRiskCount <= 500 &&
+        data.lowRiskCount is int && data.lowRiskCount >= 0 && data.lowRiskCount <= 500 &&
+        data.piiItemsRemoved is int && data.piiItemsRemoved >= 0 && data.piiItemsRemoved <= 10000 &&
+        data.onDeviceCount is int && data.onDeviceCount >= 0 && data.onDeviceCount <= 500 &&
+        data.inCloudCount is int && data.inCloudCount >= 0 && data.inCloudCount <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidAuditedClause(data, auditId, clauseId) {
+      return data.keys().hasAll([
+          'id', 'auditId', 'userId', 'clauseTitle', 'redactedText',
+          'riskLevel', 'plainEnglishSummary', 'redFlags', 'inferenceSource',
+          'piiItemsRemoved', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'auditId', 'userId', 'clauseTitle', 'redactedText',
+          'riskLevel', 'plainEnglishSummary', 'redFlags', 'inferenceSource',
+          'piiItemsRemoved', 'legalConcern', 'suggestedCounterClause',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) && data.id == clauseId &&
+        isValidId(data.auditId) && data.auditId == auditId &&
+        isValidId(data.userId) && data.userId == request.auth.uid &&
+        data.clauseTitle is string && data.clauseTitle.size() >= 1 && data.clauseTitle.size() <= 240 &&
+        data.redactedText is string && data.redactedText.size() >= 1 && data.redactedText.size() <= 12000 &&
+        data.riskLevel in ['LOW', 'MEDIUM', 'HIGH'] &&
+        data.plainEnglishSummary is string && data.plainEnglishSummary.size() >= 1 && data.plainEnglishSummary.size() <= 2000 &&
+        data.redFlags is list && data.redFlags.size() <= 20 &&
+        (data.redFlags.size() == 0 || (data.redFlags[0] is string && data.redFlags[0].size() <= 500)) &&
+        data.inferenceSource in ['ON_DEVICE', 'IN_CLOUD'] &&
+        data.piiItemsRemoved is int && data.piiItemsRemoved >= 0 && data.piiItemsRemoved <= 1000 &&
+        (!('legalConcern' in data) || (data.legalConcern is string && data.legalConcern.size() <= 2000)) &&
+        (!('suggestedCounterClause' in data) || (data.suggestedCounterClause is string && data.suggestedCounterClause.size() <= 12000)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Users collection (owner-isolated PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // Contract audits collection
+    match /audits/{auditId} {
+      allow get: if isValidId(auditId) && isVerifiedUser() && existing().userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(auditId) &&
+        isVerifiedUser() &&
+        isValidContractAudit(incoming(), auditId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(auditId) &&
+        isVerifiedUser() &&
+        isValidContractAudit(incoming(), auditId) &&
+        existing().userId == request.auth.uid &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'totalClauses', 'highRiskCount', 'mediumRiskCount',
+          'lowRiskCount', 'piiItemsRemoved', 'onDeviceCount', 'inCloudCount', 'updatedAt'
+        ]);
+      allow delete: if isValidId(auditId) && isVerifiedUser() && existing().userId == request.auth.uid;
+
+      // Clauses subcollection (Master Gate checks parent audit)
+      match /clauses/{clauseId} {
+        allow get: if isValidId(auditId) && isValidId(clauseId) &&
+          isVerifiedUser() &&
+          exists(/databases/$(database)/documents/audits/$(auditId)) &&
+          get(/databases/$(database)/documents/audits/$(auditId)).data.userId == request.auth.uid;
+        allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+        allow create: if isValidId(auditId) && isValidId(clauseId) &&
+          isVerifiedUser() &&
+          isValidAuditedClause(incoming(), auditId, clauseId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/audits/$(auditId)) &&
+          get(/databases/$(database)/documents/audits/$(auditId)).data.userId == request.auth.uid;
+        allow update: if isValidId(auditId) && isValidId(clauseId) &&
+          isVerifiedUser() &&
+          isValidAuditedClause(incoming(), auditId, clauseId) &&
+          existing().userId == request.auth.uid &&
+          incoming().id == existing().id &&
+          incoming().auditId == existing().auditId &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/audits/$(auditId)) &&
+          get(/databases/$(database)/documents/audits/$(auditId)).data.userId == request.auth.uid &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'legalConcern', 'suggestedCounterClause', 'updatedAt'
+          ]);
+        allow delete: if isValidId(auditId) && isValidId(clauseId) &&
+          isVerifiedUser() &&
+          existing().userId == request.auth.uid &&
+          exists(/databases/$(database)/documents/audits/$(auditId)) &&
+          get(/databases/$(database)/documents/audits/$(auditId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}

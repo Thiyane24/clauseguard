@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated ClauseGuard user profile with PII isolated to owner-only reads.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "createdAt", "updatedAt"]
+    },
+    "ContractAudit": {
+      "title": "ContractAudit",
+      "description": "Metadata summary for a redacted contract audit session.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "jurisdiction": {
+          "type": "string",
+          "enum": ["Malaysia", "Singapore", "United Kingdom", "United States", "General"]
+        },
+        "totalClauses": {
+          "type": "integer"
+        },
+        "highRiskCount": {
+          "type": "integer"
+        },
+        "mediumRiskCount": {
+          "type": "integer"
+        },
+        "lowRiskCount": {
+          "type": "integer"
+        },
+        "piiItemsRemoved": {
+          "type": "integer"
+        },
+        "onDeviceCount": {
+          "type": "integer"
+        },
+        "inCloudCount": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "jurisdiction",
+        "totalClauses",
+        "highRiskCount",
+        "mediumRiskCount",
+        "lowRiskCount",
+        "piiItemsRemoved",
+        "onDeviceCount",
+        "inCloudCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AuditedClause": {
+      "title": "AuditedClause",
+      "description": "Redacted clause audit and optional counter-clause result stored under an audit.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "auditId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "clauseTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "redactedText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "riskLevel": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH"]
+        },
+        "plainEnglishSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "redFlags": {
+          "type": "array",
+          "maxLength": 20
+        },
+        "inferenceSource": {
+          "type": "string",
+          "enum": ["ON_DEVICE", "IN_CLOUD"]
+        },
+        "piiItemsRemoved": {
+          "type": "integer"
+        },
+        "legalConcern": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "suggestedCounterClause": {
+          "type": "string",
+          "maxLength": 12000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "auditId",
+        "userId",
+        "clauseTitle",
+        "redactedText",
+        "riskLevel",
+        "plainEnglishSummary",
+        "redFlags",
+        "inferenceSource",
+        "piiItemsRemoved",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-only user profile document."
+    },
+    "/audits/{auditId}": {
+      "schema": { "$ref": "#/entities/ContractAudit" },
+      "description": "Saved redacted contract audit owned by userId."
+    },
+    "/audits/{auditId}/clauses/{clauseId}": {
+      "schema": { "$ref": "#/entities/AuditedClause" },
+      "description": "Redacted clause analysis documents belonging to a parent audit."
+    }
+  }
+}

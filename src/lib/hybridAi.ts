@@ -54,6 +54,15 @@ interface ChromeLanguageModelMonitor {
   ) => void;
 }
 
+interface ChromeLanguageModelSession {
+  prompt: (
+    input: string,
+    options?: { responseConstraint?: Record<string, unknown> },
+  ) => Promise<string>;
+  clone?: () => Promise<ChromeLanguageModelSession>;
+  destroy: () => void;
+}
+
 interface ChromeLanguageModelApi {
   availability: (options?: {
     expectedInputs?: Array<{ type: 'text'; languages: string[] }>;
@@ -63,7 +72,7 @@ interface ChromeLanguageModelApi {
     expectedInputs?: Array<{ type: 'text'; languages: string[] }>;
     expectedOutputs?: Array<{ type: 'text'; languages: string[] }>;
     monitor?: (m: ChromeLanguageModelMonitor) => void;
-  }) => Promise<{ destroy: () => void }>;
+  }) => Promise<ChromeLanguageModelSession>;
 }
 
 const NANO_LANGUAGE_OPTIONS = {
@@ -71,9 +80,43 @@ const NANO_LANGUAGE_OPTIONS = {
   expectedOutputs: [{ type: 'text' as const, languages: ['en'] }],
 };
 
+const NANO_JSON_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  properties: {
+    clauseTitle: { type: 'string' },
+    riskLevel: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH'] },
+    plainEnglishSummary: { type: 'string' },
+    redFlags: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['clauseTitle', 'riskLevel', 'plainEnglishSummary', 'redFlags'],
+};
+
+// Clauses up to this length run locally on Gemini Nano ($0.00); denser clauses offload to Cloud Flash
+const ON_DEVICE_MAX_CHARS = 280;
+
+let baseNanoSession: ChromeLanguageModelSession | null = null;
+let nanoQueue: Promise<unknown> = Promise.resolve();
+
 function getChromeLanguageModel(): ChromeLanguageModelApi | undefined {
   if (typeof window === 'undefined') return undefined;
   return (window as unknown as { LanguageModel?: ChromeLanguageModelApi }).LanguageModel;
+}
+
+async function getNanoSession(): Promise<ChromeLanguageModelSession> {
+  const lm = getChromeLanguageModel();
+  if (!lm) {
+    throw new Error('Chrome LanguageModel unavailable');
+  }
+  if (!baseNanoSession) {
+    baseNanoSession = await lm.create(NANO_LANGUAGE_OPTIONS);
+  }
+  return baseNanoSession;
+}
+
+function runOnDeviceSerialized<T>(task: () => Promise<T>): Promise<T> {
+  const next = nanoQueue.then(task, task);
+  nanoQueue = next.catch(() => {});
+  return next;
 }
 
 export async function checkNanoAvailability(): Promise<NanoAvailability> {
@@ -113,7 +156,10 @@ export async function downloadNanoModel(
       });
     },
   });
-  session.destroy();
+  if (baseNanoSession) {
+    baseNanoSession.destroy();
+  }
+  baseNanoSession = session;
   return checkNanoAvailability();
 }
 
@@ -178,6 +224,43 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+async function auditClauseOnDevice(params: {
+  fallbackTitle: string;
+  safeClauseText: string;
+  jurisdiction: Jurisdiction;
+}): Promise<Omit<ClauseAuditResponse, 'latencyMs'>> {
+  const compactPrompt = [
+    `Audit this ${params.jurisdiction} contract clause. Reply with compact JSON only:`,
+    `{"clauseTitle":"2-4 word title","riskLevel":"LOW|MEDIUM|HIGH","plainEnglishSummary":"1 short sentence under 18 words","redFlags":["up to 2 short risk phrases, or empty if LOW"]}`,
+    `Clause:\n${params.safeClauseText}`,
+  ].join('\n');
+
+  const rawJson = await runOnDeviceSerialized(async () => {
+    const base = await getNanoSession();
+    const session = base.clone ? await base.clone() : base;
+    try {
+      try {
+        return await session.prompt(compactPrompt, {
+          responseConstraint: NANO_JSON_SCHEMA,
+        });
+      } catch {
+        return await session.prompt(compactPrompt);
+      }
+    } finally {
+      if (session !== base) {
+        session.destroy();
+      }
+    }
+  });
+
+  const parsed = parseJsonResponse(rawJson);
+  const normalized = normalizeAuditJson(parsed, params.fallbackTitle);
+  return {
+    ...normalized,
+    inferenceSource: 'ON_DEVICE',
+  };
+}
+
 export async function auditClauseHybrid(params: {
   clauseId: string;
   fallbackTitle: string;
@@ -186,6 +269,26 @@ export async function auditClauseHybrid(params: {
 }): Promise<ClauseAuditResponse> {
   const start = performance.now();
   const safeClauseText = redactPII(params.redactedText).redactedText;
+
+  // Complexity-aware routing: run routine/short clauses locally on Gemini Nano ($0.00)
+  // and offload long, multi-condition clauses in parallel to Cloud Gemini Flash.
+  const nanoStatus = await checkNanoAvailability();
+  if (nanoStatus === 'available' && safeClauseText.length <= ON_DEVICE_MAX_CHARS) {
+    try {
+      const localResult = await auditClauseOnDevice({
+        fallbackTitle: params.fallbackTitle,
+        safeClauseText,
+        jurisdiction: params.jurisdiction,
+      });
+      return {
+        ...localResult,
+        latencyMs: Math.round(performance.now() - start),
+      };
+    } catch {
+      // Fall through to cloud model if local inference fails
+    }
+  }
+
   const prompt = [
     `You are ClauseGuard, a strict legal contract risk auditor for ${params.jurisdiction} law.`,
     'Analyze the following REDACTED contract clause and output JSON matching the schema.',

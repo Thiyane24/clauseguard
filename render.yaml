@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: clauseguard
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_CLOUD_MODEL
+        value: gemini-3.5-flash
+      - key: FIREBASE_PROJECT_ID
+        value: project2-8e03b
+      - key: FIRESTORE_DATABASE_ID
+        value: (default)

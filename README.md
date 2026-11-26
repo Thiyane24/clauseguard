@@ -3,9 +3,9 @@
 **Zero-Leakage Hybrid AI Contract Intelligence** built for `#BuildHybridAI 2026`.
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-clauseguard--l5dq.onrender.com-0F172A?style=for-the-badge)](https://clauseguard-l5dq.onrender.com)
-<<<<<<< HEAD
+
 [![Watch Demo](https://img.shields.io/badge/Watch_Demo-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ME4XC5E5vb8)
-=======
+
 [![YouTube Demo](https://img.shields.io/badge/YouTube_Demo-Watch_2--Min_Walkthrough-DC2626?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/ME4XC5E5vb8)
 >>>>>>> 7e4e92566bdd72345c303cba173dc7bdeb5ab20b
 [![Built With](https://img.shields.io/badge/Built_With-Gemini_Nano_%2B_Firebase_AI_Logic-10B981?style=for-the-badge)](#system-architecture)
